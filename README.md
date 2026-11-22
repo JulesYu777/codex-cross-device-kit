@@ -1,8 +1,19 @@
 # Codex Cross-Device Kit
 
-A reproducible macOS and Windows setup for synchronizing an uncommitted project worktree over a private Tailscale connection and using Codex Remote Connections in both directions.
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-这个仓库的主体是可复现的部署套件，附带一个精简的 Codex Skill。文件同步由 Syncthing 完成，原生聊天通过 Codex 远控在其所在设备上继续。套件支持两个受信任设备、一个专用共享目录和独立 Syncthing 实例。
+## Project type and purpose
+
+This is an open-source automation and deployment toolkit for one Mac and one Windows PC, with an optional Codex Skill. Run the Python scripts directly, or load the Skill to guide a Codex agent through the same setup and checks.
+
+- **Sync project files across networks.** Keep one dedicated working directory, including uncommitted and untracked files, in sync between two trusted devices. Syncthing copies files over a private Tailscale connection.
+- **Continue native Codex chats remotely.** Use official Codex Remote Connections in either direction to open and continue chats on their originating device. Native chat history stays on that device. The kit does not replicate Codex chat databases, sidebar sections, or pins.
+
+## How to use it
+
+1. Install the dependencies and join both devices to the same Tailscale network.
+2. Run `bootstrap.py` and `kit.py prepare` on each device. Exchange the two offers, apply them on both devices, and start synchronization.
+3. Pair the devices through Codex, then verify file transfer and remote replies in both directions.
 
 ## What to install
 
@@ -18,7 +29,7 @@ The bootstrap downloads the pinned Syncthing executable for macOS or Windows on 
 
 ## Deploy the worktree
 
-Start with one populated project and an empty replica, or with two worktrees whose synchronized files are byte-for-byte identical. Pause edits until both sides finish pairing. Pick a separate project folder and state directory for each host. The configuration uses private TCP port `22020` and loopback GUI port `18384` by default.
+Start with one populated project and an empty replica, or with two worktrees whose synchronized files are byte-for-byte identical. Pause edits until both sides finish pairing. Choose an existing project directory or create an empty replica on each host. Keep the kit’s state directory outside the synchronized folder. The configuration uses private TCP port `22020` and loopback GUI port `18384` by default.
 
 ### macOS
 
@@ -27,10 +38,11 @@ git clone https://github.com/JulesYu777/codex-cross-device-kit.git
 cd codex-cross-device-kit
 python3 bootstrap.py
 tailscale ip -4
+mkdir -p "$HOME/Projects/my-project"
 python3 kit.py prepare --role mac --address YOUR_MAC_TAILSCALE_IPV4 --folder "$HOME/Projects/my-project" --syncthing ./bin/syncthing
 ```
 
-If the standalone Tailscale app has no shell alias, run `/Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4`.
+Replace the IPv4 placeholder with the address printed by Tailscale and use your actual project path if it differs from the example. If the standalone Tailscale app has no shell alias, run `/Applications/Tailscale.app/Contents/MacOS/Tailscale ip -4`.
 
 ### Windows PowerShell
 
@@ -43,12 +55,12 @@ New-Item -ItemType Directory -Force -Path "$HOME\Projects\my-project"
 py -3 kit.py prepare --role windows --address YOUR_WINDOWS_TAILSCALE_IPV4 --folder "$HOME\Projects\my-project" --syncthing .\bin\syncthing.exe
 ```
 
-If `tailscale` is unavailable on PATH, try `& "$env:ProgramFiles\Tailscale\tailscale.exe" ip -4`. Use the directory that actually holds the intended replica. An empty replica can be used even when the other host has tracked and untracked files.
+Replace the IPv4 placeholder and use your actual project path if it differs from the example. If `tailscale` is unavailable on PATH, try `& "$env:ProgramFiles\Tailscale\tailscale.exe" ip -4`. Use the directory that actually holds the intended replica. An empty replica can be used even when the other host has tracked and untracked files.
 
 ### Exchange and activate
 
 1. Exchange the two `offer.json` files directly with the other trusted device. Each offer contains the Syncthing device ID, private endpoint and the synchronized-file path/hash inventory. Verify the device ID and endpoint against the other host before applying. Keep these offers private.
-2. From the kit folder on each host, run `python3 kit.py apply PEER_OFFER_PATH` on macOS or `py -3 kit.py apply PEER_OFFER_PATH` on Windows. Use quotes around paths containing spaces. Both hosts need to apply each other's offer, so both separately validate their local files.
+2. From the kit folder on each host, run `python3 kit.py apply "PEER_OFFER_PATH"` on macOS or `py -3 kit.py apply "PEER_OFFER_PATH"` on Windows. Replace `PEER_OFFER_PATH` with the offer file received from the other host. Applying on both hosts verifies each host’s local files.
 3. Start it with `kit.py start` using the same Python launcher. This runs in the foreground. To start at login, run `kit.py service` instead. macOS registers and starts a LaunchAgent. Windows registers a current-user Run entry for the next login. On Windows you can also run `kit.py start` for the current session.
 4. Run `kit.py doctor --require-ready` using the same Python launcher. It must report a connection using the expected peer IP, 100% peer completion and zero pending items, pending deletions and pull errors.
 
@@ -70,23 +82,19 @@ On each host, enable control of that host under **Settings → Connections**, th
 
 For an automated file check, use the same unique run name on both machines, for example `trial-001`. On each host run `kit.py probe write trial-001`, then `kit.py probe read trial-001` using that host's Python launcher. Compare each write hash to the other host's read hash. After both reads, run `kit.py probe clean trial-001` on both hosts to delete their respective test files. Re-run `kit.py doctor --require-ready` and confirm both markers have disappeared. For a genuine WAN test, keep one device on its current network and move the other to a different connection.
 
-Tested in the originating deployment: distinct physical networks, bidirectional native remote prompts, new and uncommitted files in both directions, offline catch-up, restart recovery and deletion propagation. Those results informed the kit. The repository's laboratory tests use fresh synthetic directories and two isolated Syncthing instances. The two types of test measure different things.
+The original deployment tested both directions across separate physical networks, including native Codex replies, new and uncommitted files, offline catch-up, restart recovery, and deletion propagation. The repository’s automated tests use synthetic directories and two isolated Syncthing instances.
 
 ### Diagnose and stop
 
 - If `doctor` cannot reach its local endpoint, start the dedicated Syncthing instance and check its GUI port. If the local API is available but the peer is absent, compare both offers and inspect Tailscale, tailnet policy and the scoped firewall rule. [Syncthing connections API](https://docs.syncthing.net/rest/system-connections-get.html)
 - If Codex reports a WebSocket timeout, check the designated host's live remote-control registration and test DNS and TLS to the official destination on the initiating device. A wrong certificate hostname indicates a path or resolver problem. Restore a valid DNS/HTTPS route and leave certificate verification enabled. Use an approved resolver for the affected domain if necessary. [Encrypted DNS reference](https://developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/)
-- To stop a foreground deployment, use Ctrl+C on the two kit instances. For macOS login launch, use `launchctl bootout gui/$(id -u) PATH_PRINTED_BY_SERVICE`, then remove that specific LaunchAgent file to keep it disabled. On Windows, remove the exact Run value name printed by `service` from `HKCU:\Software\Microsoft\Windows\CurrentVersion\Run` and shut down only this kit instance using its local Syncthing GUI. [Windows Run keys](https://learn.microsoft.com/windows/win32/setupapi/run-and-runonce-registry-keys) The project and private identity/configuration can be retained for rollback.
+- To stop a foreground deployment, use Ctrl+C on the two kit instances. For macOS login launch, use `launchctl bootout gui/$(id -u) "PATH_PRINTED_BY_SERVICE"`, then remove that specific LaunchAgent file to keep it disabled. On Windows, remove the exact Run value name printed by `service` from `HKCU:\Software\Microsoft\Windows\CurrentVersion\Run` and shut down only this kit instance using its local Syncthing GUI. [Windows Run keys](https://learn.microsoft.com/windows/win32/setupapi/run-and-runonce-registry-keys) The project and private identity/configuration can be retained for rollback.
 
-## Why a kit plus a skill
+## Deployment kit and optional Skill
 
-The original work had three useful stages: establish authenticated cross-network reachability, converge project files without touching Git internals, and verify real operations in both directions. Repeated pairing, ad hoc proxy adjustments and live native-history merge attempts are not routine deployment stages.
+The deployment scripts compare file inventories, configure an isolated Syncthing instance, register login startup, and verify both directions. The [optional Codex Skill](skills/codex-cross-device-kit/SKILL.md) guides an agent through those scripts and the native authorization prompts.
 
-A deployment kit is the primary artifact because it can check file equivalence, reproduce an isolated Syncthing configuration, register startup and run verifiable acceptance probes. The [optional Skill](skills/codex-cross-device-kit/SKILL.md) guides an agent through these commands, recognizes manual gates and interprets evidence. It is not a separate deployment engine.
-
-To use the Skill locally, copy `skills/codex-cross-device-kit` to `~/.codex/skills/codex-cross-device-kit` on your device and keep a checkout of this repository available. Load the Skill when deploying or diagnosing this setup.
-
-原生历史保留在原设备。已验证的远控可以打开并继续这些会话。套件不包含生产聊天库自动合并。曾经的隔离验证发现，已加载会话的外部追加和分段历史可能无法完整回放。保留现有记录和私有备份，停止未取得完整回读证据的迁移尝试。
+To install the Skill, copy `skills/codex-cross-device-kit` into `~/.agents/skills/` on macOS or `%USERPROFILE%\.agents\skills\` on Windows. Create the destination directory if needed. Keep the repository checkout available and select `codex-cross-device-kit` in Codex when asking it to deploy or diagnose the setup. [Codex Skill guide](https://learn.chatgpt.com/docs/build-skills)
 
 ## Engineering checks
 
@@ -103,4 +111,6 @@ py -3 -m unittest discover -s tests -v
 
 CI runs the same tests in GitHub-hosted macOS and Windows environments. The suite verifies conflict refusal and re-prepare, two-way hash equality, an offline write followed by catch-up after restart, cleanup propagation, and Git and environment-file exclusions.
 
-This repository is community-maintained. Tailscale, Syncthing and Codex are separately maintained products. See [LICENSE](LICENSE) for this kit's source.
+## License
+
+The community-maintained kit is released under the [MIT License](LICENSE). Tailscale, Syncthing, and Codex are maintained separately.
