@@ -1,0 +1,10 @@
+/bin/
+/build/
+__pycache__/
+*.py[cod]
+.env
+.env.*
+*.pem
+*.key
+offer.json
+kit.json
