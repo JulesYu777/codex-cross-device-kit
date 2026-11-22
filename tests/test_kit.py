@@ -108,7 +108,7 @@ class RealSyncthingTest(unittest.TestCase):
             (win / "baseline.txt").write_text("unrelated")
             a, b = tmp / "state-mac", tmp / "state-win"
             p, q, g, h = free_ports(4)
-            binary = os.environ["SYNCTHING_BIN"]
+            binary = os.path.relpath(os.environ["SYNCTHING_BIN"], Path.cwd())
             a_offer = kit.prepare(a, mac, "mac", "127.0.0.1", p, g, binary, lab=True)
             b_offer = kit.prepare(b, win, "windows", "127.0.0.1", q, h, binary, lab=True)
             with self.assertRaisesRegex(ValueError, "worktrees differ"):

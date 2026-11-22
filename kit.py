@@ -209,6 +209,7 @@ def prepare(home, folder, role, ip, listen, gui, binary, lab=False):
     exe = shutil.which(str(binary))
     if not exe:
         fail("Install Syncthing or give its executable path with --syncthing.")
+    exe = str(Path(exe).resolve())
     home.mkdir(parents=True, exist_ok=True, mode=0o700)
     env = dict(os.environ, STNODEFAULTFOLDER="1")
     subprocess.run([exe, "generate", f"--home={home}", "--no-port-probing"],
