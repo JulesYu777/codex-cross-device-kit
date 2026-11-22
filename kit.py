@@ -332,6 +332,24 @@ def start_args(home, state):
     return [state["binary"], "serve", f"--home={home}", "--no-browser", "--no-restart", "--no-upgrade"]
 
 
+WINDOWS_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+
+
+def windows_run_entry(name, command, subkey=WINDOWS_RUN_KEY):
+    import winreg
+    if len(command) > 260:
+        fail("The Windows login command is too long. Choose a shorter kit or state path.")
+    access = winreg.KEY_QUERY_VALUE | winreg.KEY_SET_VALUE
+    with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, subkey, 0, access) as key:
+        try:
+            existing = winreg.QueryValueEx(key, name)
+        except FileNotFoundError:
+            winreg.SetValueEx(key, name, 0, winreg.REG_SZ, command)
+        else:
+            if existing != (command, winreg.REG_SZ):
+                fail("A different Windows startup entry already exists.")
+
+
 def service(home, state):
     suffix = hashlib.sha256(str(home).encode()).hexdigest()[:12]
     if sys.platform == "darwin":
@@ -342,29 +360,9 @@ def service(home, state):
                  "StandardOutPath": str(home / "service.log"), "StandardErrorPath": str(home / "service.log")}
         data = plistlib.dumps(paths)
     elif os.name == "nt":
-        dest = Path(os.environ["APPDATA"]) / "Microsoft/Windows/Start Menu/Programs/Startup" / (f"CodexCrossDeviceKit-{suffix}.lnk")
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        args = start_args(home, state)
-        env = dict(os.environ, KIT_LINK=str(dest), KIT_BINARY=args[0],
-                   KIT_ARGS=subprocess.list2cmdline(args[1:]), KIT_HOME=str(home))
-        script = """
-$ErrorActionPreference = 'Stop'
-$existing = Test-Path -LiteralPath $env:KIT_LINK
-$link = (New-Object -ComObject WScript.Shell).CreateShortcut($env:KIT_LINK)
-if ($existing) {
-    if ($link.TargetPath -ne $env:KIT_BINARY -or $link.Arguments -cne $env:KIT_ARGS) {
-        throw 'A different startup entry already exists.'
-    }
-} else {
-    $link.TargetPath = $env:KIT_BINARY
-    $link.Arguments = $env:KIT_ARGS
-    $link.WorkingDirectory = $env:KIT_HOME
-    $link.WindowStyle = 7
-    $link.Save()
-}
-"""
-        subprocess.run(["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script], env=env, check=True)
-        print(dest)
+        name = f"CodexCrossDeviceKit-{suffix}"
+        windows_run_entry(name, subprocess.list2cmdline(start_args(home, state)))
+        print(f"HKCU Run value: {name}")
         return
     else:
         fail("Login service setup is available on macOS and Windows.")

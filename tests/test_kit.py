@@ -6,7 +6,7 @@ import subprocess
 import tempfile
 import time
 import unittest
-from unittest.mock import patch
+from uuid import uuid4
 import xml.etree.ElementTree as ET
 
 import kit
@@ -48,11 +48,18 @@ def running(home):
             print((home / "test.log").read_text(encoding="utf-8", errors="replace")[-4000:])
             raise
         finally:
-            process.terminate()
             try:
-                process.wait(timeout=8)
+                kit.api(home, kit.ready(home), "system/shutdown", method="POST")
+            except OSError:
+                pass
+            try:
+                process.wait(timeout=10)
             except subprocess.TimeoutExpired:
-                process.kill()
+                if os.name == "nt":
+                    subprocess.run(["taskkill.exe", "/PID", str(process.pid), "/T", "/F"],
+                                   capture_output=True, check=False)
+                else:
+                    process.terminate()
                 process.wait(timeout=8)
 
 
@@ -81,18 +88,22 @@ class InventoryTest(unittest.TestCase):
 
 @unittest.skipUnless(os.getenv("SYNCTHING_BIN"), "set SYNCTHING_BIN for actual two-process integration")
 class RealSyncthingTest(unittest.TestCase):
-    @unittest.skipUnless(os.name == "nt", "Windows Startup shortcut only")
-    def test_windows_startup_shortcut_in_disposable_profile(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            home = root / "kit space"
-            home.mkdir()
-            appdata = root / "测试配置"
-            state = {"binary": str(Path(os.environ["SYNCTHING_BIN"]).resolve())}
-            with patch.dict(os.environ, {"APPDATA": str(appdata)}):
-                kit.service(home, state)
-                kit.service(home, state)
-            self.assertEqual(len(list(appdata.rglob("CodexCrossDeviceKit-*.lnk"))), 1)
+    @unittest.skipUnless(os.name == "nt", "Windows Run registry only")
+    def test_windows_startup_command_preserves_unicode(self):
+        import winreg
+        test_key = "Software\\CodexCrossDeviceKitTest-" + uuid4().hex
+        command = subprocess.list2cmdline([r"C:\应用\syncthing.exe", "serve",
+                                         r"--home=C:\测试 配置"])
+        name = "TestOnly"
+        try:
+            kit.windows_run_entry(name, command, subkey=test_key)
+            kit.windows_run_entry(name, command, subkey=test_key)
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, test_key) as key:
+                self.assertEqual(winreg.QueryValueEx(key, name), (command, winreg.REG_SZ))
+            with self.assertRaisesRegex(ValueError, "different Windows startup"):
+                kit.windows_run_entry(name, "different", subkey=test_key)
+        finally:
+            winreg.DeleteKey(winreg.HKEY_CURRENT_USER, test_key)
 
     def test_pair_transfer_partition_restart_and_cleanup(self):
         with tempfile.TemporaryDirectory() as td:
