@@ -1,4 +1,4 @@
-# Codex Cross-Device Kit
+# Codex Workspace Sync
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -8,6 +8,8 @@
 
 - **跨网络同步项目文件。** 在两台受信设备之间双向同步一个专用工作目录，包括尚未提交或尚未被 Git 跟踪的文件。Syncthing 通过 Tailscale 私网传输文件。
 - **远程继续原生 Codex 聊天。** 使用 Codex 官方远程连接，从任意一端打开并继续对方设备上的聊天。原生历史保留在创建它的设备上。工具包不复制 Codex 聊天数据库、侧栏分区或置顶关系。
+
+**原生历史迁移设计。** 涵盖 Windows 导出、Mac 项目路径映射、隔离回放验证和导入失败后的恢复。迁移命令目前是设计中的接口。[Windows 到 Mac 迁移设计](docs/native-history-migration.zh-CN.md)
 
 ## 怎么用
 
@@ -34,8 +36,8 @@
 ### macOS
 
 ```sh
-git clone https://github.com/JulesYu777/codex-cross-device-kit.git
-cd codex-cross-device-kit
+git clone https://github.com/JulesYu777/codex-workspace-sync.git
+cd codex-workspace-sync
 python3 bootstrap.py
 tailscale ip -4
 mkdir -p "$HOME/Projects/my-project"
@@ -47,8 +49,8 @@ python3 kit.py prepare --role mac --address YOUR_MAC_TAILSCALE_IPV4 --folder "$H
 ### Windows PowerShell
 
 ```powershell
-git clone https://github.com/JulesYu777/codex-cross-device-kit.git
-Set-Location codex-cross-device-kit
+git clone https://github.com/JulesYu777/codex-workspace-sync.git
+Set-Location codex-workspace-sync
 py -3 bootstrap.py
 tailscale ip -4
 New-Item -ItemType Directory -Force -Path "$HOME\Projects\my-project"

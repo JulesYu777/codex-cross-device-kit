@@ -1,4 +1,4 @@
-# Codex Cross-Device Kit
+# Codex Workspace Sync
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -8,6 +8,8 @@ This is an open-source automation and deployment toolkit for one Mac and one Win
 
 - **Sync project files across networks.** Keep one dedicated working directory, including uncommitted and untracked files, in sync between two trusted devices. Syncthing copies files over a private Tailscale connection.
 - **Continue native Codex chats remotely.** Use official Codex Remote Connections in either direction to open and continue chats on their originating device. Native chat history stays on that device. The kit does not replicate Codex chat databases, sidebar sections, or pins.
+
+**Native history migration proposal.** The design covers Windows export, Mac project mapping, isolated replay, and recovery if an import fails. The migration commands are proposed interfaces. [Windows to Mac migration design](docs/native-history-migration.md)
 
 ## How to use it
 
@@ -34,8 +36,8 @@ Start with one populated project and an empty replica, or with two worktrees who
 ### macOS
 
 ```sh
-git clone https://github.com/JulesYu777/codex-cross-device-kit.git
-cd codex-cross-device-kit
+git clone https://github.com/JulesYu777/codex-workspace-sync.git
+cd codex-workspace-sync
 python3 bootstrap.py
 tailscale ip -4
 mkdir -p "$HOME/Projects/my-project"
@@ -47,8 +49,8 @@ Replace the IPv4 placeholder with the address printed by Tailscale and use your 
 ### Windows PowerShell
 
 ```powershell
-git clone https://github.com/JulesYu777/codex-cross-device-kit.git
-Set-Location codex-cross-device-kit
+git clone https://github.com/JulesYu777/codex-workspace-sync.git
+Set-Location codex-workspace-sync
 py -3 bootstrap.py
 tailscale ip -4
 New-Item -ItemType Directory -Force -Path "$HOME\Projects\my-project"
