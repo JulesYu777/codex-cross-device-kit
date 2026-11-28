@@ -7,9 +7,10 @@
 这是一套面向一台 Mac 和一台 Windows 电脑的开源自动化部署工具包，附带可选的 Codex Skill。可以直接运行 Python 脚本，也可以让 Codex 加载 Skill，按同样的流程部署和验收。
 
 - **跨网络同步项目文件。** 在两台受信设备之间双向同步一个专用工作目录，包括尚未提交或尚未被 Git 跟踪的文件。Syncthing 通过 Tailscale 私网传输文件。
-- **远程继续原生 Codex 聊天。** 使用 Codex 官方远程连接，从任意一端打开并继续对方设备上的聊天。原生历史保留在创建它的设备上。工具包不复制 Codex 聊天数据库、侧栏分区或置顶关系。
+- **远程继续原生 Codex 聊天。** 使用 Codex 官方远程连接，从任意一端打开并继续对方设备上的聊天。原生历史保留在创建它的设备上；此流程不复制聊天数据库、侧栏分区或置顶关系。
+- **按需启用原生历史交换与恢复。** 为同一账户单独配置私有历史交换，自动处理兼容的单分段聊天；归档或多分段聊天需显式导出到独立空间恢复，也可把可见对话文本归档为 Markdown。这不是工作树同步或官方远程连接。配置、支持版本、拒绝行为及验收见[原生历史指南](docs/native-history-migration.zh-CN.md)。
 
-**原生历史迁移设计。** 涵盖 Windows 导出、Mac 项目路径映射、隔离回放验证和导入失败后的恢复。迁移命令目前是设计中的接口。[Windows 到 Mac 迁移设计](docs/native-history-migration.zh-CN.md)
+禁止将 `CODEX_HOME`、SQLite 数据库或实际对话数据放入同步项目或 Git。历史交换必须使用与两端原生配置和工作树分离的私有专用目录。原生历史命令要求 Python 3.12 或更新版本；压缩输入需要 Python 3.14 自带的 `compression.zstd` 或显式指定的 zstd 可执行文件。合成测试通过不代表可以自动部署到正式配置。
 
 ## 怎么用
 
@@ -21,7 +22,7 @@
 
 | 工具 | 用途 | 官方来源 |
 | --- | --- | --- |
-| Python 3.9 或更新版本 | 运行部署脚本、诊断和测试 | [下载 Python](https://www.python.org/downloads/) |
+| 工作树部署使用 Python 3.9+；原生历史使用 3.12+ | 运行脚本和检查；完整测试套件使用 3.12+ | [下载 Python](https://www.python.org/downloads/) |
 | Git | 克隆工具包，并独立管理你的项目版本 | [下载 Git](https://git-scm.com/downloads) |
 | Tailscale | 为两端提供可跨局域网访问的私网地址 | [下载 Tailscale](https://tailscale.com/download)、[命令行文档](https://tailscale.com/docs/reference/tailscale-cli) |
 | Syncthing | 同步项目工作目录 | [下载 Syncthing](https://syncthing.net/downloads/)、[工具包固定使用的版本](https://github.com/syncthing/syncthing/releases/tag/v2.1.7) |

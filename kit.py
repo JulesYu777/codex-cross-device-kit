@@ -411,6 +411,8 @@ def probe(home, state, action, run, wait):
 
 
 def main():
+    from history_cli import add_commands as add_history_commands, run as run_history
+
     parser = argparse.ArgumentParser(description=__doc__)
     default_home = Path(os.getenv("LOCALAPPDATA", str(Path.home() / ".local/share"))) / "codex-cross-device-kit"
     parser.add_argument("--home", type=Path, default=default_home)
@@ -431,7 +433,10 @@ def main():
     mark.add_argument("action", choices=("write", "read", "clean"))
     mark.add_argument("run")
     mark.add_argument("--wait", type=int, default=45)
+    add_history_commands(commands.add_parser("history", help="export, synchronize, and recover native history"))
     args = parser.parse_args()
+    if args.command == "history":
+        return run_history(args)
     home = args.home.expanduser().resolve()
     os.umask(0o077)
     if args.command == "prepare":
@@ -461,5 +466,7 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (OSError, ValueError, ET.ParseError, subprocess.CalledProcessError) as exc:
+    except KeyboardInterrupt:
+        sys.exit(130)
+    except (OSError, RuntimeError, ValueError, ET.ParseError, subprocess.CalledProcessError) as exc:
         sys.exit(f"Error: {exc}")

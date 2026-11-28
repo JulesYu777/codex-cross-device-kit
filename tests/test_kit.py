@@ -119,7 +119,11 @@ class RealSyncthingTest(unittest.TestCase):
             (win / "baseline.txt").write_text("unrelated")
             a, b = tmp / "state-mac", tmp / "state-win"
             p, q, g, h = free_ports(4)
-            binary = os.path.relpath(os.environ["SYNCTHING_BIN"], Path.cwd())
+            executable = Path(os.environ["SYNCTHING_BIN"]).resolve()
+            # On Windows the kit checkout and an installed binary may be on
+            # different drives, which have no relative path between them.
+            binary = (os.path.relpath(executable, Path.cwd())
+                      if executable.anchor == Path.cwd().anchor else str(executable))
             a_offer = kit.prepare(a, mac, "mac", "127.0.0.1", p, g, binary, lab=True)
             b_offer = kit.prepare(b, win, "windows", "127.0.0.1", q, h, binary, lab=True)
             with self.assertRaisesRegex(ValueError, "worktrees differ"):

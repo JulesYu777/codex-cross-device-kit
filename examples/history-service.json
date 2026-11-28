@@ -1,0 +1,16 @@
+{
+  "home": "C:/Users/example/.codex",
+  "app_cli": "C:/Apps/Codex/codex.exe",
+  "state_dir": "C:/Users/example/AppData/Local/codex-history-state",
+  "exchange": "C:/Users/example/PrivateSync/codex-history-exchange",
+  "device": "windows",
+  "peer": "mac",
+  "pair_id": "replace-with-a-unique-private-pair-id",
+  "account_fingerprint": "replace-with-the-output-of-history-identity",
+  "path_maps": [
+    {"from": "/Users/example/Projects/project", "to": "C:/Users/example/Projects/project"}
+  ],
+  "sync_compressed": true,
+  "batch_size": 8,
+  "interval_seconds": 60
+}
