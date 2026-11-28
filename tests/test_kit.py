@@ -41,8 +41,10 @@ def wait_until(check, time_limit=50):
 @contextmanager
 def running(home):
     with (home / "test.log").open("ab") as log:
-        process = subprocess.Popen(kit.start_args(home, kit.ready(home)), stdout=log, stderr=log)
+        state = kit.ready(home)
+        process = subprocess.Popen(kit.start_args(home, state), stdout=log, stderr=log)
         try:
+            wait_until(lambda: kit.api(home, state, "db/status", {"folder": kit.FOLDER_ID})["state"] == "idle")
             yield
         except Exception:
             print((home / "test.log").read_text(encoding="utf-8", errors="replace")[-4000:])
@@ -142,7 +144,8 @@ class RealSyncthingTest(unittest.TestCase):
                 self.assertEqual(root.findtext("options/relaysEnabled"), "false")
             with running(a):
                 with running(b):
-                    wait_until(lambda: kit.doctor(a, sa)["connected"] and kit.doctor(b, sb)["connected"])
+                    wait_until(lambda: kit.is_synchronized(kit.doctor(a, sa))
+                               and kit.is_synchronized(kit.doctor(b, sb)), time_limit=90)
                     self.assertEqual(kit.probe(a, sa, "write", "trial-001", 30),
                                      kit.probe(b, sb, "read", "trial-001", 30))
                     self.assertEqual(kit.probe(b, sb, "write", "trial-001", 30),
@@ -151,6 +154,8 @@ class RealSyncthingTest(unittest.TestCase):
                 before = kit.probe(a, sa, "write", "offline-01", 30)
                 self.assertFalse((win / "syncthing-acceptance-offline-01-mac.txt").exists())
                 with running(b):
+                    wait_until(lambda: kit.is_synchronized(kit.doctor(a, sa))
+                               and kit.is_synchronized(kit.doctor(b, sb)), time_limit=90)
                     self.assertEqual(before, kit.probe(b, sb, "read", "offline-01", 40))
                     kit.probe(a, sa, "clean", "trial-001", 30)
                     kit.probe(b, sb, "clean", "trial-001", 30)

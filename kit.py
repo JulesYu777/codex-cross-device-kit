@@ -328,6 +328,12 @@ def doctor(home, state):
             "peer_folder_state": remote.get("remoteState")}
 
 
+def is_synchronized(status):
+    return (status["connected"] and status["expected_peer_ip"]
+            and status["peer_completion"] == 100 and status["peer_folder_state"] == "valid"
+            and not any(status[key] for key in ("local_pending", "pull_errors", "peer_pending", "peer_deletes")))
+
+
 def start_args(home, state):
     return [state["binary"], "serve", f"--home={home}", "--no-browser", "--no-restart", "--no-upgrade"]
 
@@ -455,9 +461,7 @@ def main():
             result = doctor(home, state)
             print(json.dumps(result, indent=2))
             if args.require_ready:
-                return 0 if (result["connected"] and result["expected_peer_ip"]
-                             and result["peer_completion"] == 100 and result["peer_folder_state"] == "valid"
-                             and not any(result[k] for k in ("local_pending", "pull_errors", "peer_pending", "peer_deletes"))) else 1
+                return 0 if is_synchronized(result) else 1
         if args.command == "probe":
             print(probe(home, state, args.action, args.run, args.wait))
     return 0
